@@ -4,8 +4,6 @@ WORKDIR /go/src/app
 
 COPY . .
 
-RUN go build -o main .
+CMD ["go","run","main.go"]
 
 EXPOSE 8080
-
-CMD ["./main"]
