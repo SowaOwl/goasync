@@ -80,11 +80,47 @@ func AsyncWithOptionsHandle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// if requestData.Options.Count != 0 {
-	// 	if requestData.Options.Type == "get" {
+	var wg sync.WaitGroup
+	var returnData []map[string]interface{}
 
-	// 	}
-	// }
+	if requestData.Options.Count != 0 {
+		ch := make(chan map[string]interface{}, requestData.Options.Count)
+		if requestData.Options.Type == "get" {
+			for i := 0; i < requestData.Options.Count; i++ {
+				wg.Add(1)
+
+				go repositories.GetAsync(requestData.Options.Url, requestData.Options.Headers, &wg, ch)
+			}
+		} else if requestData.Options.Type == "post" {
+			for i := 0; i < requestData.Options.Count; i++ {
+				wg.Add(1)
+
+				go repositories.PostAsync(requestData.Options.Url, requestData.Options.Headers, requestData.Data[0], &wg, ch)
+			}
+		}
+		wg.Wait()
+		close(ch)
+
+		for response := range ch {
+			returnData = append(returnData, response)
+		}
+	} else {
+		ch := make(chan map[string]interface{}, len(requestData.Data))
+		for _, data := range requestData.Data {
+			wg.Add(1)
+
+			go repositories.PostAsync(requestData.Options.Url, requestData.Options.Headers, data, &wg, ch)
+		}
+
+		wg.Wait()
+		close(ch)
+
+		for response := range ch {
+			returnData = append(returnData, response)
+		}
+	}
+
+	successResponse(w, "Requests completed successfully", http.StatusOK, returnData)
 }
 
 func handleError(w http.ResponseWriter, errMsg string, statusCode int) {
