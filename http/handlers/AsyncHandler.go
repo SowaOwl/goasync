@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"sync"
@@ -10,11 +11,22 @@ import (
 	repositories "github.com/SowaOwl/goasync.git/repositories"
 )
 
-type RequestData struct {
+type AsyncRequestData struct {
 	Url     string      `json:"url"`
 	Type    string      `json:"type"`
 	Headers []string    `json:"headers"`
 	Data    interface{} `json:"data"`
+}
+
+type AsyncWithOptionRequestData struct {
+	Options AsyncOptions  `json:"options"`
+	Data    []interface{} `json:"data"`
+}
+
+type AsyncOptions struct {
+	Url     string   `json:"url"`
+	Type    string   `json:"post"`
+	Headers []string `json:"headers"`
 }
 
 type Response struct {
@@ -23,9 +35,11 @@ type Response struct {
 	Data    interface{} `json:"data"`
 }
 
-func validateAsyncData(data RequestData) error {
-	if data.Url == "" || data.Type == "" {
-		return errors.New("поля 'url' и 'type' должны быть заполнены")
+func validateAsyncData(dataList []AsyncRequestData) error {
+	for i, data := range dataList {
+		if data.Url == "" || data.Type == "" {
+			return errors.New("fileds 'url' and 'type' reqired to fill" + ". Data index: " + fmt.Sprint(i+1))
+		}
 	}
 	return nil
 }
@@ -36,7 +50,7 @@ func AsyncHandle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var requestDataList []RequestData
+	var requestDataList []AsyncRequestData
 	if err := json.NewDecoder(r.Body).Decode(&requestDataList); err != nil {
 		handleError(w, err.Error(), http.StatusBadRequest)
 		return
@@ -46,11 +60,12 @@ func AsyncHandle(w http.ResponseWriter, r *http.Request) {
 	ch := make(chan map[string]interface{}, len(requestDataList))
 	var returnData []map[string]interface{}
 
-	for i, requestData := range requestDataList {
-		if err := validateAsyncData(requestData); err != nil {
-			handleError(w, err.Error()+". Data index: "+string(i), http.StatusBadRequest)
-			continue
-		}
+	if err := validateAsyncData(requestDataList); err != nil {
+		handleError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	for _, requestData := range requestDataList {
 		wg.Add(1)
 
 		switch requestData.Type {
@@ -72,6 +87,13 @@ func AsyncHandle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	successResponse(w, "Requests completed successfully", http.StatusOK, returnData)
+}
+
+func AsyncWithOptionsHandle(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		handleError(w, "This route allowed only post method", http.StatusMethodNotAllowed)
+		return
+	}
 }
 
 func handleError(w http.ResponseWriter, errMsg string, statusCode int) {

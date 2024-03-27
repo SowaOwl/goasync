@@ -9,5 +9,7 @@ import (
 func main() {
 	http.HandleFunc("/", handlers.WelcomeHandle)
 	http.HandleFunc("/api/async", handlers.AsyncHandle)
+	http.HandleFunc("/api/options/async", handlers.AsyncWithOptionsHandle)
+
 	http.ListenAndServe(":8080", nil)
 }
