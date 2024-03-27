@@ -6,27 +6,10 @@ import (
 	"net/http"
 	"sync"
 
-	repositories "github.com/SowaOwl/goasync.git/repositories"
+	model "github.com/SowaOwl/goasync.git/app/models"
+	repositories "github.com/SowaOwl/goasync.git/app/repositories"
+	validator "github.com/SowaOwl/goasync.git/http/validators"
 )
-
-type AsyncRequestData struct {
-	Url     string      `json:"url"`
-	Type    string      `json:"type"`
-	Headers []string    `json:"headers"`
-	Data    interface{} `json:"data"`
-}
-
-type AsyncWithOptionRequestData struct {
-	Options AsyncOptions  `json:"options"`
-	Data    []interface{} `json:"data"`
-}
-
-type AsyncOptions struct {
-	Url     string   `json:"url"`
-	Type    string   `json:"type"`
-	Count   int      `json:"count"`
-	Headers []string `json:"headers"`
-}
 
 type Response struct {
 	Status  bool        `json:"status"`
@@ -40,13 +23,13 @@ func AsyncHandle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var requestDataList []AsyncRequestData
+	var requestDataList []model.AsyncRequestData
 	if err := json.NewDecoder(r.Body).Decode(&requestDataList); err != nil {
 		handleError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	if err := validator.validateAsyncData(requestDataList); err != nil {
+	if err := validator.ValidateAsyncData(requestDataList); err != nil {
 		handleError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -85,23 +68,23 @@ func AsyncWithOptionsHandle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var requestData AsyncWithOptionRequestData
+	var requestData model.AsyncWithOptionRequestData
 
 	if err := json.NewDecoder(r.Body).Decode(&requestData); err != nil {
 		handleError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	if err := validator.validateAsyncWithOptionsData(requestData); err != nil {
+	if err := validator.ValidateAsyncWithOptionsData(requestData); err != nil {
 		handleError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	if requestData.Options.Count != 0 {
-		if requestData.Options.Type == "get" {
+	// if requestData.Options.Count != 0 {
+	// 	if requestData.Options.Type == "get" {
 
-		}
-	}
+	// 	}
+	// }
 }
 
 func handleError(w http.ResponseWriter, errMsg string, statusCode int) {
