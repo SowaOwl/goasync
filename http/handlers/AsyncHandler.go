@@ -31,7 +31,7 @@ func validateAsyncData(data RequestData) error {
 }
 
 func AsyncHandle(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
+	if r.Method != http.MethodPost {
 		handleError(w, "This route allowed only post method", http.StatusMethodNotAllowed)
 		return
 	}
@@ -49,12 +49,18 @@ func AsyncHandle(w http.ResponseWriter, r *http.Request) {
 	for i, requestData := range requestDataList {
 		if err := validateAsyncData(requestData); err != nil {
 			handleError(w, err.Error()+". Data index: "+string(i), http.StatusBadRequest)
+			continue
 		}
 		wg.Add(1)
-		if requestData.Type == "get" {
+
+		switch requestData.Type {
+		case "get":
 			go repositories.GetAsync(requestData.Url, requestData.Headers, &wg, ch)
-		} else if requestData.Type == "post" {
+		case "post":
 			go repositories.PostAsync(requestData.Url, requestData.Headers, requestData.Data, &wg, ch)
+		default:
+			handleError(w, "Неподдерживаемый тип запроса", http.StatusBadRequest)
+			wg.Done()
 		}
 	}
 

@@ -19,28 +19,14 @@ func GetAsync(url string, headers []string, wg *sync.WaitGroup, ch chan map[stri
 
 	startTime := time.Now()
 
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		sendError(url, startTime, err.Error(), ch)
-		return
-	}
-	addHeaders(req, headers)
-
-	resp, err := client.Do(req)
-	if err != nil {
-		sendError(url, startTime, err.Error(), ch)
-		return
-	}
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := sendRequest("GET", url, headers, nil)
 	if err != nil {
 		sendError(url, startTime, err.Error(), ch)
 		return
 	}
 
 	ch <- map[string]interface{}{
-		"duration": time.Since(startTime) / 1e6,
+		"duration": time.Since(startTime) / time.Millisecond,
 		"body":     jsonToMap(body),
 		"url":      url,
 	}
@@ -51,42 +37,59 @@ func PostAsync(url string, headers []string, data interface{}, wg *sync.WaitGrou
 
 	startTime := time.Now()
 
-	postBody, err := json.Marshal(data)
-	if err != nil {
-		sendError(url, startTime, err.Error(), ch)
-	}
-
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(postBody))
-	if err != nil {
-		sendError(url, startTime, err.Error(), ch)
-		return
-	}
-	addHeaders(req, headers)
-
-	resp, err := client.Do(req)
-	if err != nil {
-		sendError(url, startTime, err.Error(), ch)
-		return
-	}
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := sendRequest("POST", url, headers, data)
 	if err != nil {
 		sendError(url, startTime, err.Error(), ch)
 		return
 	}
 
 	ch <- map[string]interface{}{
-		"duration": time.Since(startTime) / 1e6,
+		"duration": time.Since(startTime) / time.Millisecond,
 		"body":     jsonToMap(body),
 		"url":      url,
 	}
 }
 
+func sendRequest(method string, url string, headers []string, data interface{}) ([]byte, error) {
+	var postBody []byte
+	var err error
+	if data != nil {
+		postBody, err = json.Marshal(data)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	var req *http.Request
+	if data != nil {
+		req, err = http.NewRequest(method, url, bytes.NewBuffer(postBody))
+	} else {
+		req, err = http.NewRequest(method, url, nil)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	addHeaders(req, headers)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	return body, nil
+}
+
 func sendError(url string, startTime time.Time, errorMsg string, ch chan<- map[string]interface{}) {
 	ch <- map[string]interface{}{
 		"url":      url,
-		"duration": time.Since(startTime),
+		"duration": time.Since(startTime) / time.Millisecond,
 		"error":    errorMsg,
 	}
 }
