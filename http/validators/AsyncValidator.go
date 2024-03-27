@@ -29,6 +29,8 @@ func ValidateAsyncWithOptionsData(data model.AsyncWithOptionRequestData) error {
 	case "post":
 		if data.Options.Count != 0 && len(data.Data) > 1 {
 			return errors.New("when 'type' is 'post', 'count' must be 0 or the length of 'data' array must not be greater than 1")
+		} else if data.Options.Count != 0 && len(data.Data) < 1 {
+			return errors.New("when 'type' is 'post', and 'count' more 0 length of 'data' array must be 1")
 		}
 	default:
 		return errors.New("unsupported request type")

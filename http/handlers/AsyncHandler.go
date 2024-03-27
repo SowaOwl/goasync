@@ -85,16 +85,12 @@ func AsyncWithOptionsHandle(w http.ResponseWriter, r *http.Request) {
 
 	if requestData.Options.Count != 0 {
 		ch := make(chan map[string]interface{}, requestData.Options.Count)
-		if requestData.Options.Type == "get" {
-			for i := 0; i < requestData.Options.Count; i++ {
-				wg.Add(1)
+		for i := 0; i < requestData.Options.Count; i++ {
+			wg.Add(1)
 
+			if requestData.Options.Type == "get" {
 				go repositories.GetAsync(requestData.Options.Url, requestData.Options.Headers, &wg, ch)
-			}
-		} else if requestData.Options.Type == "post" {
-			for i := 0; i < requestData.Options.Count; i++ {
-				wg.Add(1)
-
+			} else {
 				go repositories.PostAsync(requestData.Options.Url, requestData.Options.Headers, requestData.Data[0], &wg, ch)
 			}
 		}
