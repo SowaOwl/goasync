@@ -2,8 +2,6 @@ package handler
 
 import (
 	"encoding/json"
-	"errors"
-	"fmt"
 	"log"
 	"net/http"
 	"sync"
@@ -25,7 +23,8 @@ type AsyncWithOptionRequestData struct {
 
 type AsyncOptions struct {
 	Url     string   `json:"url"`
-	Type    string   `json:"post"`
+	Type    string   `json:"type"`
+	Count   int      `json:"count"`
 	Headers []string `json:"headers"`
 }
 
@@ -33,15 +32,6 @@ type Response struct {
 	Status  bool        `json:"status"`
 	Message string      `json:"message"`
 	Data    interface{} `json:"data"`
-}
-
-func validateAsyncData(dataList []AsyncRequestData) error {
-	for i, data := range dataList {
-		if data.Url == "" || data.Type == "" {
-			return errors.New("fileds 'url' and 'type' reqired to fill" + ". Data index: " + fmt.Sprint(i+1))
-		}
-	}
-	return nil
 }
 
 func AsyncHandle(w http.ResponseWriter, r *http.Request) {
@@ -56,14 +46,14 @@ func AsyncHandle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var wg sync.WaitGroup
-	ch := make(chan map[string]interface{}, len(requestDataList))
-	var returnData []map[string]interface{}
-
-	if err := validateAsyncData(requestDataList); err != nil {
+	if err := validator.validateAsyncData(requestDataList); err != nil {
 		handleError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+
+	var wg sync.WaitGroup
+	ch := make(chan map[string]interface{}, len(requestDataList))
+	var returnData []map[string]interface{}
 
 	for _, requestData := range requestDataList {
 		wg.Add(1)
@@ -74,7 +64,7 @@ func AsyncHandle(w http.ResponseWriter, r *http.Request) {
 		case "post":
 			go repositories.PostAsync(requestData.Url, requestData.Headers, requestData.Data, &wg, ch)
 		default:
-			handleError(w, "Неподдерживаемый тип запроса", http.StatusBadRequest)
+			handleError(w, "Unsupported request type", http.StatusBadRequest)
 			wg.Done()
 		}
 	}
@@ -93,6 +83,24 @@ func AsyncWithOptionsHandle(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		handleError(w, "This route allowed only post method", http.StatusMethodNotAllowed)
 		return
+	}
+
+	var requestData AsyncWithOptionRequestData
+
+	if err := json.NewDecoder(r.Body).Decode(&requestData); err != nil {
+		handleError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if err := validator.validateAsyncWithOptionsData(requestData); err != nil {
+		handleError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if requestData.Options.Count != 0 {
+		if requestData.Options.Type == "get" {
+
+		}
 	}
 }
 

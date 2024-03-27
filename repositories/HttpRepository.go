@@ -16,7 +16,6 @@ var (
 
 func GetAsync(url string, headers []string, wg *sync.WaitGroup, ch chan map[string]interface{}) {
 	defer wg.Done()
-
 	startTime := time.Now()
 
 	body, err := sendRequest("GET", url, headers, nil)
@@ -25,16 +24,11 @@ func GetAsync(url string, headers []string, wg *sync.WaitGroup, ch chan map[stri
 		return
 	}
 
-	ch <- map[string]interface{}{
-		"duration": time.Since(startTime) / time.Millisecond,
-		"body":     jsonToMap(body),
-		"url":      url,
-	}
+	sendSuccess(url, startTime, body, ch)
 }
 
 func PostAsync(url string, headers []string, data interface{}, wg *sync.WaitGroup, ch chan map[string]interface{}) {
 	defer wg.Done()
-
 	startTime := time.Now()
 
 	body, err := sendRequest("POST", url, headers, data)
@@ -43,11 +37,7 @@ func PostAsync(url string, headers []string, data interface{}, wg *sync.WaitGrou
 		return
 	}
 
-	ch <- map[string]interface{}{
-		"duration": time.Since(startTime) / time.Millisecond,
-		"body":     jsonToMap(body),
-		"url":      url,
-	}
+	sendSuccess(url, startTime, body, ch)
 }
 
 func sendRequest(method string, url string, headers []string, data interface{}) ([]byte, error) {
@@ -84,6 +74,14 @@ func sendRequest(method string, url string, headers []string, data interface{}) 
 	}
 
 	return body, nil
+}
+
+func sendSuccess(url string, startTime time.Time, body []byte, ch chan<- map[string]interface{}) {
+	ch <- map[string]interface{}{
+		"duration": time.Since(startTime) / time.Millisecond,
+		"body":     jsonToMap(body),
+		"url":      url,
+	}
 }
 
 func sendError(url string, startTime time.Time, errorMsg string, ch chan<- map[string]interface{}) {
